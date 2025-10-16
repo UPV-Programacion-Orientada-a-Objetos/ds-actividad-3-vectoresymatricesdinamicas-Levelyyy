@@ -1,131 +1,155 @@
 #include <iostream>
 #include <iomanip>
+#include <string>
 #include <limits>
 #include <new>
 using namespace std;
 
-const int numProd = 5;
-const int numMP = 4;
-const int semanasIni = 4;
+const int prod = 5;
+const int matp = 4;
+const int semIni = 4;
 
-float** crearMatriz(int filas, int cols){
-    float **m;
-    m = new float*[filas];
-    for(int i=0;i<filas;i++){
-        m[i]=new float[cols];
-        for(int j=0;j<cols;j++){
-            m[i][j]=0;
+float** crearMat(int f,int c){
+    float** mm = nullptr;
+    try{
+        mm = new float*[f];
+        for(int i=0;i<f;i++){
+            mm[i] = new float[c];
+            for(int j=0;j<c;j++){
+                mm[i][j] = 0;
+            }
         }
+    }catch(bad_alloc &err){
+        if(mm){
+            for(int i=0;i<f;i++) delete[] mm[i];
+            delete[] mm;
+        }
+        mm = nullptr;
     }
-    return m;
+    return mm;
 }
 
-void borrarMatriz(float **&m, int filas){
+void borrarMat(float** &m,int f){
     if(!m) return;
-    for(int i=0;i<filas;i++) delete[] m[i];
+    for(int i=0;i<f;i++){
+        delete[] m[i];
+    }
     delete[] m;
-    m=nullptr;
+    m = nullptr;
 }
 
-bool addSemana(float **&m, int filas, int &cols){
-    int nuevo = cols+1;
-    float **tmp = new float*[filas];
-    for(int i=0;i<filas;i++) tmp[i]=new float[nuevo];
-
-    for(int i=0;i<filas;i++){
-        for(int j=0;j<cols;j++){
-            tmp[i][j] = m[i][j];
+bool masSemana(float** &m,int f,int &c){
+    int nuevo = c+1;
+    float** temp = nullptr;
+    try{
+        temp = new float*[f];
+        for(int i=0;i<f;i++){
+            temp[i] = new float[nuevo];
         }
-        tmp[i][cols]=0;
+        for(int i=0;i<f;i++){
+            for(int j=0;j<c;j++){
+                temp[i][j] = m[i][j];
+            }
+            temp[i][c] = 0;
+        }
+    }catch(bad_alloc &e){
+        if(temp){
+            for(int i=0;i<f;i++) delete[] temp[i];
+            delete[] temp;
+        }
+        return false;
     }
-    borrarMatriz(m,filas);
-    m = tmp;
-    cols = nuevo;
+    borrarMat(m,f);
+    m = temp;
+    c = nuevo;
     return true;
 }
 
-void mostrarPlan(float **m, int f, int c){
-    cout<<"\nPlan actual ("<<f<<" productos x "<<c<<" semanas)\n";
+string leerLinea(){
+    string x;
+    getline(cin,x);
+    return x;
+}
+
+int leerInt(string txt,int minv,int maxv){
+    while(true){
+        cout<<txt;
+        string s = leerLinea();
+        try{
+            int num = stoi(s);
+            if(num<minv || num>maxv){
+                cout<<"Valor fuera de rango ["<<minv<<"-"<<maxv<<"]. Intenta de nuevo.\n";
+                continue;
+            }
+            return num;
+        }catch(...){
+            cout<<"Entrada invalida, intenta otra vez.\n";
+        }
+    }
+}
+
+float leerFloat(string txt){
+    while(true){
+        cout<<txt;
+        string s = leerLinea();
+        try{
+            float v = stof(s);
+            if(v<0){
+                cout<<"No puede ser negativo.\n";
+                continue;
+            }
+            return v;
+        }catch(...){
+            cout<<"Dato invalido.\n";
+        }
+    }
+}
+
+void verPlan(float** m,int f,int c){
+    cout<<"\nPlan de Produccion ("<<f<<" Productos x "<<c<<" Semanas)\n";
     cout<<setw(8)<<"Prod";
     for(int j=0;j<c;j++) cout<<setw(10)<<"S"<<j;
     cout<<"\n";
     for(int i=0;i<f;i++){
         cout<<setw(8)<<"P"<<i;
-        for(int j=0;j<c;j++) cout<<setw(10)<<m[i][j];
+        for(int j=0;j<c;j++){
+            cout<<setw(10)<<fixed<<setprecision(0)<<m[i][j];
+        }
         cout<<"\n";
     }
 }
 
-void limpiar(){
-    cin.clear();
-    cin.ignore(numeric_limits<streamsize>::max(),'\n');
-}
-
-int leerInt(string t, int min, int max){
-    int x;
-    cout<<t;
-    while(true){
-        if(!(cin>>x)){
-            cout<<"dato invalido:";
-            limpiar();
-            continue;
-        }
-        if(x<min || x>max){
-            cout<<"fuera de rango:";
-            continue;
-        }
-        limpiar();
-        return x;
-    }
-}
-
-float leerFloat(string t){
-    float x;
-    cout<<t;
-    while(true){
-        if(!(cin>>x)){
-            cout<<"dato invalido:";
-            limpiar();
-            continue;
-        }
-        if(x<0){
-            cout<<"no negativo:";
-            continue;
-        }
-        limpiar();
-        return x;
-    }
-}
-
-void consumoSemana(float **mat, int f, int c, int sem, const int req[numProd][numMP], float *out){
-    for(int k=0;k<numMP;k++) out[k]=0;
+void consumoSem(float** plan,int f,int c,int sem,const int req[prod][matp],float *out){
+    for(int k=0;k<matp;k++) out[k]=0;
     for(int i=0;i<f;i++){
-        float unidades = mat[i][sem];
-        for(int k=0;k<numMP;k++){
-            out[k]+= unidades * req[i][k];
+        float unidades = plan[i][sem];
+        for(int k=0;k<matp;k++){
+            out[k] += unidades * (float)req[i][k];
         }
     }
 }
 
-float calcCosto(float **mat, int f, int c, int sem, const float *cost){
-    float tot=0;
-    for(int i=0;i<f;i++) tot+=mat[i][sem]*cost[i];
-    return tot;
+float calcCOGS(float** plan,int f,int sem,const float *costos){
+    float t=0;
+    for(int i=0;i<f;i++){
+        t += plan[i][sem] * costos[i];
+    }
+    return t;
 }
 
-float inventarioFinal(const float *ini, const float *costo, const float *usado, float *queda){
+float invFinal(const float *invIni,const float *precio,const float *cons,float *resta){
     float val=0;
-    for(int k=0;k<numMP;k++){
-        float rest = ini[k]-usado[k];
-        if(rest<0) rest=0;
-        queda[k]=rest;
-        val+=rest*costo[k];
+    for(int k=0;k<matp;k++){
+        float rem = invIni[k] - cons[k];
+        if(rem<0) rem = 0;
+        resta[k] = rem;
+        val += rem * precio[k];
     }
     return val;
 }
 
 int main(){
-    const int req[numProd][numMP]={
+    const int req[prod][matp] = {
         {2,0,1,0},
         {1,1,0,2},
         {0,2,2,0},
@@ -133,86 +157,100 @@ int main(){
         {0,1,0,3}
     };
 
-    float *costoProd = new float[numProd];
-    float *invMP = new float[numMP];
-    const float costoMP[numMP] = {2.2,3.4,1.6,4.1};
+    float *cost = nullptr;
+    float *inv = nullptr;
+    try{
+        cost = new float[prod];
+        inv = new float[matp];
+    }catch(...){
+        cout<<"Error al asignar memoria\n";
+        if(cost) delete[] cost;
+        if(inv) delete[] inv;
+        return 1;
+    }
 
-    costoProd[0]=5.5; costoProd[1]=8; costoProd[2]=6.2; costoProd[3]=10.3; costoProd[4]=7.1;
-    invMP[0]=1000; invMP[1]=800; invMP[2]=600; invMP[3]=500;
+    cost[0]=5; cost[1]=8; cost[2]=6; cost[3]=10; cost[4]=7.5;
+    inv[0]=1000; inv[1]=800; inv[2]=600; inv[3]=400;
+    const float precioMat[matp] = {2,3.5,1.5,4};
 
-    int filas=numProd;
-    int cols=semanasIni;
-    float **plan = crearMatriz(filas,cols);
+    int f=prod;
+    int c=semIni;
+    float **plan = crearMat(f,c);
+    if(!plan){
+        delete[] cost; delete[] inv;
+        cout<<"Error al crear matriz inicial\n";
+        return 1;
+    }
 
-    // inicializo algunos datos medio al azar
-    for(int i=0;i<filas;i++){
-        for(int j=0;j<cols;j++){
-            plan[i][j] = 200 + (i*50) + (j*30);
+    for(int i=0;i<f;i++){
+        for(int j=0;j<c;j++){
+            plan[i][j] = 100 + i*60 + j*50;
         }
     }
 
-    cout<<"--- Sistema simple de COGS ---\n";
-    cout<<"Datos cargados ("<<filas<<"x"<<cols<<")\n";
+    cout<<"--- Sistema de Planificacion y Costos (COGS) ---\n\n";
+    cout<<"Inicializacion exitosa. Matriz de Planificacion: "<<f<<" Productos x "<<c<<" Semanas.\n";
 
-    bool seguir=true;
-    while(seguir){
-        cout<<"\n1.Ver plan\n2.Agregar semana\n3.Modificar prod\n4.Calcular COGS\n5.Reporte MP\n6.Salir\nOpcion:";
-        int op;
-        if(!(cin>>op)){limpiar();continue;}
-        limpiar();
+    bool sigue=true;
+    while(sigue){
+        cout<<"\n--- Menu Principal ---\n";
+        cout<<"1. Ver Plan de Produccion\n";
+        cout<<"2. Agregar Nueva Semana (Redimensionar Matriz)\n";
+        cout<<"3. Modificar Produccion\n";
+        cout<<"4. Calcular COGS y Final Inventory\n";
+        cout<<"5. Salir\n";
+
+        int op = leerInt("Opcion seleccionada: ",1,5);
 
         if(op==1){
-            mostrarPlan(plan,filas,cols);
-        }
-        else if(op==2){
-            cout<<"Agregando semana nueva...\n";
-            addSemana(plan,filas,cols);
-            cout<<"ok ahora "<<cols<<" semanas.\n";
-        }
-        else if(op==3){
-            int p = leerInt("producto (0-4): ",0,filas-1);
-            int s = leerInt("semana (0-"+to_string(cols-1)+"): ",0,cols-1);
-            float q = leerFloat("cantidad: ");
-            plan[p][s]=q;
-            cout<<"Actualizado!\n";
-        }
-        else if(op==4){
-            int s = leerInt("Semana para calculo: ",0,cols-1);
-            float total=0;
-            for(int i=0;i<filas;i++) total+=plan[i][s];
-            float cogs = calcCosto(plan,filas,cols,s,costoProd);
-            float usado[numMP];
-            consumoSemana(plan,filas,cols,s,req,usado);
-            float queda[numMP];
-            float valor = inventarioFinal(invMP,costoMP,usado,queda);
+            verPlan(plan,f,c);
+        }else if(op==2){
+            cout<<"Agregando Semana "<<(c+1)<<"...\n";
+            bool ok = masSemana(plan,f,c);
+            if(ok){
+                cout<<"Matriz redimensionada a "<<f<<"x"<<c<<". ¡Memoria gestionada con exito!\n";
+            }else{
+                cout<<"Error al redimensionar.\n";
+            }
+        }else if(op==3){
+            int p = leerInt("Ingrese Producto (0-4): ",0,f-1);
+            int s = leerInt("Ingrese Semana (0-"+to_string(c-1)+"): ",0,c-1);
+            float q = leerFloat("Cantidad a producir: ");
+            plan[p][s] = q;
+            cout<<"Produccion actualizada.\n";
+        }else if(op==4){
+            int s = leerInt("Ingrese Semana para el calculo de costos: ",0,c-1);
+            float totU=0;
+            for(int i=0;i<f;i++) totU += plan[i][s];
 
-            cout<<fixed<<setprecision(2);
-            cout<<"--- Semana "<<s<<" ---\n";
-            cout<<"Prod total: "<<total<<"  COGS: $"<<cogs<<"\n";
-            cout<<"MP usada:\n";
-            for(int k=0;k<numMP;k++) cout<<" MP"<<k<<": "<<usado[k]<<"\n";
-            cout<<"Inventario final (valor): $"<<valor<<"\n";
-        }
-        else if(op==5){
-            int s = leerInt("Semana: ",0,cols-1);
-            float usado[numMP];
-            consumoSemana(plan,filas,cols,s,req,usado);
-            cout<<"Consumo MP semana "<<s<<":\n";
-            for(int k=0;k<numMP;k++) cout<<" MP"<<k<<": "<<usado[k]<<"\n";
-        }
-        else if(op==6){
-            cout<<"Saliendo...\n";
-            seguir=false;
-        }
-        else{
-            cout<<"Opcion incorrecta\n";
+            float cons[matp];
+            consumoSem(plan,f,c,s,req,cons);
+
+            float cogs = calcCOGS(plan,f,s,cost);
+            float rest[matp];
+            float invVal = invFinal(inv,precioMat,cons,rest);
+
+            cout<<"\n--- Reporte de Costos (Semana "<<s<<") ---\n";
+            cout<<"Produccion Total (Semana "<<s<<"): "<<fixed<<setprecision(0)<<totU<<" unidades.\n";
+            cout<<"Costo Total de Produccion (COGS): $"<<fixed<<setprecision(2)<<cogs<<"\n";
+            cout<<"Consumo de Materia Prima: ";
+            for(int k=0;k<matp;k++){
+                cout<<"MP-0"<<(k+1)<<" ("<<fixed<<setprecision(0)<<cons[k]<<" uni)";
+                if(k<matp-1) cout<<", ";
+            }
+            cout<<".\n";
+            cout<<"Valor del Inventario Final (M.P. restante): $"<<fixed<<setprecision(2)<<invVal<<"\n";
+        }else if(op==5){
+            cout<<"Liberando memoria de Matriz y Vectores Dinamicos...\n";
+            sigue=false;
         }
     }
 
-    borrarMatriz(plan,filas);
-    delete[] costoProd;
-    delete[] invMP;
-    cout<<"Fin del programa\n";
+    borrarMat(plan,f);
+    delete[] cost;
+    delete[] inv;
+    cout<<"Sistema cerrado.\n";
     return 0;
 }
+
 
